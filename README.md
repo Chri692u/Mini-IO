@@ -14,9 +14,16 @@ MiniIO is a runtime system designed for shell-like languages, implemented in Has
     - `listDirectoryM`: Lists the contents of a directory.
     - `changeDirectoryM`: Changes the current working directory.
     - `getFileContentM`: Reads the contents of a file.
-    - `declareVar`: Declares a variable in the environment.
+    - `declareVarM`: Declares a variable in the environment.
     - `createFileM`: Creates a file in the working directory.
     - `removeFileM`: Removes a file in the working directory.
+    - `createDirectoryM`: Creates a directory in the working directory.
+    - `removeDirectoryM`: Removes a directory in the working directory.
+    - `getFileSizeM`: Gets the size of a file.
+    - `getDirectorySizeM`: Gets the size of a directory.
+    - `openFileM`: Opens a file.
+    - `closeFileM`: Closes a file.
+    - `appendToFileM`: Appends to a file.
 
 - **Safety**: The use of `WorldT` and `WorldM` monads provides a safe interface, encapsulating the IO operations and world state. It should be noted that MiniIO is a runtime system for shell-like languages and the side maintain no transparency. Developers should be careful of branching states. Mechanisms such as uniqueness typing is recommended.
 
