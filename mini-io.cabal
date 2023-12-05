@@ -1,0 +1,66 @@
+cabal-version:      2.4
+name:               mini-io
+version:            0.1.0.0
+
+-- A short (one-line) description of the package.
+-- synopsis:
+
+-- A longer description of the package.
+-- description:
+
+-- A URL where users can report bugs.
+-- bug-reports:
+
+-- The license under which the package is released.
+-- license:
+author:             Christoffer Lind Andersen
+maintainer:         57995582+Chri692u@users.noreply.github.com
+
+-- A copyright notice.
+-- copyright:
+-- category:
+extra-source-files: CHANGELOG.md
+
+library
+  hs-source-dirs:      src
+  c-sources:           src/ffi/io.c, src/ffi/dirs.c, src/ffi/files.c, src/ffi/info.c
+  exposed-modules:     World, Core, Error, Utility, Scope
+                       
+  build-depends:       base, text, foreign, containers    
+  default-language:    Haskell2010
+
+executable examples
+    main-is:          Examples.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base, text, mini-io, foreign
+    hs-source-dirs:   app
+    default-language: Haskell2010
+
+executable lambda-io
+    main-is:          LambdaIO.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base, text, containers, mini-io
+    hs-source-dirs:   app
+    default-language: Haskell2010
+
+executable uniqueness
+    main-is:          Uniqueness.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base, text, containers, mini-io
+    hs-source-dirs:   app
+    default-language: Haskell2010
