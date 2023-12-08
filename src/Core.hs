@@ -4,8 +4,8 @@
 module Core where
 import World
 import Scope
+import Types
 import Error
-
 import Foreign.C
 import Foreign
 import Data.Text (Text, pack, unpack)
@@ -26,10 +26,8 @@ foreign import ccall "createFile" c_touch :: CString -> IO ()
 foreign import ccall "removeFile" c_rm :: CString -> IO CInt
 foreign import ccall "createDirectory" c_mkdir :: CString -> IO CInt
 foreign import ccall "removeDirectory" c_rmdir :: CString -> IO CInt
--- test these 2 later
 foreign import ccall "getFileSize" c_sizefile :: CString -> IO CLong
 foreign import ccall "getDirectorySize" c_sizedir :: CString -> IO CLong
--- test later please
 foreign import ccall "open_file" c_open_file :: CString -> CString -> IO (Ptr ())
 foreign import ccall "close_file" c_close_file :: Ptr () -> IO ()
 foreign import ccall "append_to_file" c_append_to_file :: Ptr () -> CString -> IO ()
@@ -37,13 +35,13 @@ foreign import ccall "append_to_file" c_append_to_file :: Ptr () -> CString -> I
 printStr :: Text -> World -> World
 printStr str !w = unsafePerformIO $ withCString (unpack str) c_printStr >> return w
 
-readStr :: World -> (Text, World)
+readStr :: World -> Result Text
 readStr !w = unsafePerformIO $ allocaArray 4096 $ \buffer -> do
     c_readStr buffer 4096
     str <- peekCString buffer
     return (pack str, w)
 
-getCwd :: World -> (Text, World)
+getCwd :: World -> Result Text
 getCwd !w = unsafePerformIO $ do
     case cwd $ wi w of
         "not-set" -> do
@@ -59,7 +57,7 @@ declareVar name val !w =
     let env' = extend (env $ wi w) (name, val)
     in World (WorldInfo (cwd $ wi w) env')
 
-listDirectory :: World -> ([Text], World)
+listDirectory :: World -> Result [Text]
 listDirectory !w = unsafePerformIO $ do
     cdir <- c_cwd
     cdirs <- c_ls cdir
@@ -67,7 +65,7 @@ listDirectory !w = unsafePerformIO $ do
     free cdirs
     return (map pack dirs, w)
 
-changeDirectory :: Text -> World -> Either RuntimeError World
+changeDirectory :: Text -> World -> RuntimeEffect
 changeDirectory dirname !w = unsafePerformIO $ withCString (unpack dirname) $ \cdirname -> do
     result <- c_cd cdirname
     if result == 0 then do
@@ -79,7 +77,7 @@ changeDirectory dirname !w = unsafePerformIO $ withCString (unpack dirname) $ \c
     else
         return (Left $ FailedCd dirname)
 
-createDirectory :: Text -> World -> Either RuntimeError World
+createDirectory :: Text -> World -> RuntimeEffect
 createDirectory dirname !w = unsafePerformIO $ withCString (unpack dirname) $ \cdirname -> do
     result <- c_mkdir cdirname
     if result == 0 then
@@ -87,7 +85,7 @@ createDirectory dirname !w = unsafePerformIO $ withCString (unpack dirname) $ \c
     else
         return (Left $ FailedMkdir dirname)
 
-removeDirectory :: Text -> World -> Either RuntimeError World
+removeDirectory :: Text -> World -> RuntimeEffect
 removeDirectory dirname !w = unsafePerformIO $ withCString (unpack dirname) $ \cdirname -> do
     result <- c_rmdir cdirname
     if result == 0 then
@@ -108,7 +106,7 @@ getFileContent filename !w = unsafePerformIO $ withCString (unpack filename) $ \
 createFile :: Text -> World -> World
 createFile filename !w = unsafePerformIO $ withCString (unpack filename) c_touch >> return w
 
-removeFile :: Text -> World -> Either RuntimeError World
+removeFile :: Text -> World -> RuntimeEffect
 removeFile filename !w = unsafePerformIO $ withCString (unpack filename) $ \cfilename -> do
     result <- c_rm cfilename
     if result == 0 then
@@ -138,12 +136,12 @@ openFile filename !w = unsafePerformIO $ withCString (unpack filename) $ \cfilen
             then return (Left $ FailedOpen filename)
             else return (Right (handler, w))
 
-closeFile :: Ptr () -> World -> Either RuntimeError World
+closeFile :: Ptr () -> World -> RuntimeEffect
 closeFile handler !w = unsafePerformIO $ do
     c_close_file handler
     return (Right w)
 
-appendToFile :: Ptr () -> Text -> World -> Either RuntimeError World
+appendToFile :: Ptr () -> Text -> World -> RuntimeEffect
 appendToFile handler content !w = unsafePerformIO $ withCString (unpack content) $ \ccontent -> do
     c_append_to_file handler ccontent
     return (Right w)
@@ -222,65 +220,65 @@ appendToFileT handler content w = case appendToFile handler content w of
     Right newWorld -> (Right (), newWorld)
 
 -- | 'readStrM' reads a string from the user.
-readStrM :: WorldM Text
+readStrM :: MiniIO Text
 readStrM = WorldM readStrT
 
 -- | 'printStrM' prints a string.
-printStrM :: Text -> WorldM ()
+printStrM :: Text -> MiniIO ()
 printStrM = WorldM . printStrT
 
 -- | 'readFileM' reads the contents of a file.
-readFileM :: Text -> WorldM (Either RuntimeError Text)
+readFileM :: Text -> MiniIO (Either RuntimeError Text)
 readFileM = WorldM . readFileT
 
 -- | 'createFileM' creates a file.
-createFileM :: Text -> WorldM ()
+createFileM :: Text -> MiniIO ()
 createFileM filename = WorldM $ createFileT filename
 
 -- | 'removeFileM' removes a file.
-removeFileM :: Text -> WorldM (Either RuntimeError ())
+removeFileM :: Text -> MiniIO (Either RuntimeError ())
 removeFileM = WorldM . removeFileT
 
 -- | 'getCwdM' gets the current working directory.
-getCwdM :: WorldM Text
+getCwdM :: MiniIO Text
 getCwdM = WorldM getCwdT
 
 -- | 'listDirectoryM' lists the contents of a directory.
-listDirectoryM :: WorldM [Text]
+listDirectoryM :: MiniIO [Text]
 listDirectoryM = WorldM listDirectoryT
 
 -- | 'changeDirectoryM' changes the current working directory.
-changeDirectoryM :: Text -> WorldM (Either RuntimeError ())
+changeDirectoryM :: Text -> MiniIO (Either RuntimeError ())
 changeDirectoryM = WorldM . changeDirectoryT
 
 -- | 'createDirectoryM' creates a directory.
-createDirectoryM :: Text -> WorldM (Either RuntimeError ())
+createDirectoryM :: Text -> MiniIO (Either RuntimeError ())
 createDirectoryM = WorldM . createDirectoryT
 
 -- | 'removeDirectoryM' removes a directory.
-removeDirectoryM :: Text -> WorldM (Either RuntimeError ())
+removeDirectoryM :: Text -> MiniIO (Either RuntimeError ())
 removeDirectoryM = WorldM . removeDirectoryT
 
 -- | 'declareVarM' declares a variable in the environment.
-declareVarM :: Id -> Value -> WorldM ()
+declareVarM :: Id -> Value -> MiniIO ()
 declareVarM name val = WorldM $ declareVarT name val
 
 -- | 'getFileSizeM' gets the size of a file.
-getFileSizeM :: Text -> WorldM (Either RuntimeError Integer)
+getFileSizeM :: Text -> MiniIO (Either RuntimeError Integer)
 getFileSizeM = WorldM . getFileSizeT
 
 -- | 'getDirectorySizeM' gets the size of a directory.
-getDirectorySizeM :: Text -> WorldM (Either RuntimeError Integer)
+getDirectorySizeM :: Text -> MiniIO (Either RuntimeError Integer)
 getDirectorySizeM = WorldM . getDirectorySizeT
 
 -- | 'openFileM' opens a file.
-openFileM :: Text -> WorldM (Either RuntimeError (Ptr ()))
+openFileM :: Text -> MiniIO (Either RuntimeError (Ptr ()))
 openFileM = WorldM . openFileT
 
 -- | 'closeFileM' closes a file.
-closeFileM :: Ptr () -> WorldM (Either RuntimeError ())
+closeFileM :: Ptr () -> MiniIO (Either RuntimeError ())
 closeFileM handler = WorldM $ closeFileT handler
 
 -- | 'appendToFileM' appends to a file.
-appendToFileM :: Ptr () -> Text -> WorldM (Either RuntimeError ())
+appendToFileM :: Ptr () -> Text -> MiniIO (Either RuntimeError ())
 appendToFileM handler content = WorldM $ appendToFileT handler content

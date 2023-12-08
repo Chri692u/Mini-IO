@@ -2,6 +2,7 @@ module Main where
 
 import World
 import Core
+import Types
 import Utility
 import Scope
 import Error

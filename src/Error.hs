@@ -1,6 +1,7 @@
 module Error where
 
 import Data.Text (Text)
+import World
 
 data RuntimeError = FailedCd Text
                   | FailedExist Text

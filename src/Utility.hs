@@ -3,9 +3,7 @@ module Utility where
 import World
 import Data.Text (Text, pack, unpack)
 import Control.Monad
-
--- | 'MiniIO' is a type alias for 'WorldM'.
-type MiniIO = WorldM
+import Types
 
 -- | 'pipe' is a monadic function composition.
 pipe :: Monad m => m t -> (t -> m b) -> m b

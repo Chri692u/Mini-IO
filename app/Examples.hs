@@ -4,6 +4,7 @@ module Main where
 
 import World
 import Core
+import Types
 import Utility
 import Scope
 import Control.Monad
@@ -66,7 +67,10 @@ rmdir = do
         Right () -> printStrM "Removed directory"
 
 initWorld :: MiniIO Text
-initWorld = getCwdM
+initWorld = do
+    dir <- getCwdM
+    declareVarM "test" (Value (pack "test") Nothing Nothing)
+    return dir
 
 askFile' :: MiniIO ()
 askFile' = (printStrM "What file do you want to read?" >> readStrM) |> readTxt |> printStrM
@@ -101,5 +105,5 @@ main :: IO ()
 main = do 
     let iw = World (WorldInfo "not-set" emptyScope)
     let w = execIO initWorld iw
-    let res = runIO testfiles w
+    let res = runIO helloWorld w
     print res
