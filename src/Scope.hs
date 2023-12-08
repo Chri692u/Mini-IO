@@ -8,7 +8,7 @@ type Id = String
 -- | 'WorldInfo' represents the state of the world, including the current working directory and environment variables.
 data WorldInfo = WorldInfo { 
     cwd :: FilePath  -- ^ The current working directory.
-    , env :: Scope Value  -- ^ The environment variables.
+    , env :: Scope  -- ^ The environment variables.
     } deriving (Show)
 
 
@@ -18,20 +18,35 @@ data Value = Value {
         type_ :: Maybe String
     } deriving (Show)
 
--- | 'Scope' is a mapping from 'Id' to 'a'.
-type Scope a = M.Map Id a
 
-extend :: Scope a -> (Id, a) -> Scope a
-extend env (x, v) = M.insert x v env
+newtype Scope = Globals { values :: M.Map Id Value } deriving (Show)
 
-lookup :: Id -> Scope a -> Maybe a
-lookup = M.lookup
+emptyScope :: Scope
+emptyScope = Globals M.empty
 
-emptyScope :: Scope a
-emptyScope = M.empty
+extend :: Scope -> (Id, Value) -> Scope
+extend env (x, s) = env { values = M.insert x s (values env) }
 
-fromList :: [(Id, a)] -> Scope a
-fromList = M.fromList
+remove :: Scope -> Id -> Scope
+remove (Globals env) var = Globals (M.delete var env)
 
-toList :: Scope a -> [(Id, a)]
-toList = M.toList
+extends :: Scope -> [(Id, Value)] -> Scope
+extends env xs = env { values = M.union (M.fromList xs) (values env) }
+
+lookup :: Id -> Scope -> Maybe Value
+lookup key (Globals tys) = M.lookup key tys
+
+merge :: Scope -> Scope -> Scope
+merge (Globals a) (Globals b) = Globals (M.union a b)
+
+singleton :: Id -> Value -> Scope
+singleton x y = Globals (M.singleton x y)
+
+keys :: Scope -> [Id]
+keys (Globals env) = M.keys env
+
+fromList :: [(Id, Value)] -> Scope
+fromList xs = Globals (M.fromList xs)
+
+toList :: Scope -> [(Id, Value)]
+toList (Globals env) = M.toList env
